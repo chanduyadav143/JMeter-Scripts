@@ -26,7 +26,7 @@ pipeline {
 
         stage('Archive Results') {
             steps {
-                archiveArtifacts artifacts: 'results.jtl, report/**', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'JMX_Files/results.jtl, report/**', allowEmptyArchive: true
             }
         }
     }
