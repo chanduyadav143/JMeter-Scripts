@@ -18,7 +18,7 @@ pipeline {
             steps {
                 // Use bat instead of sh and adjust volume mount for Windows PowerShell syntax
                 bat """
-                -n -t %cd%\\JMX_FilesSample.jmx -l results.jtl
+                jmeter -n -t %cd%\\JMX_FilesSample.jmx -l results.jtl
                 """
             }
         }
