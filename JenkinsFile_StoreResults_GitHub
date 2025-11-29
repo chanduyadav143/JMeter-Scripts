@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'chanduyadav143/jmetertest:v1.0'  // Your Docker image name
+        TEST_REPO = 'https://github.com/chanduyadav143/JMeter-Scripts.git'  // Your GitHub repo URL
+        BRANCH_NAME = 'main' // branch to push back to
+    }
+
+    stages {
+        stage('Checkout Tests') {
+            steps {
+                // Clone your test scripts repository with credentials
+                git branch: "${env.BRANCH_NAME}", credentialsId: "${params.gitCredentialsID}", url: "${env.TEST_REPO}"
+            }
+        }
+
+        stage('Run JMeter Tests') {
+            steps {
+                bat """
+                docker run --rm -v %cd%\\JMX_Files:/tests -w /tests ${IMAGE_NAME} ^
+                -n -t Sample.jmx -l results.jtl
+                """
+            }
+        }
+
+        stage('Archive Results') {
+            steps {
+                archiveArtifacts artifacts: 'JMX_Files/results.jtl, report/**', allowEmptyArchive: true
+            }
+        }
+
+        stage('Push Results') {
+            steps {
+                script {
+                    // Configure git user for commit
+                    bat 'git config user.email "chandu143.cy@gmail.com"'
+                    bat 'git config user.name "chanduyadav143"'
+
+                    // Add the results to git
+                    bat 'git add JMX_Files/results.jtl'
+                    bat 'git add report/*'
+
+                    // Commit changes
+                    bat 'git commit -m "Add test results from Jenkins build ${env.BUILD_NUMBER}" || echo "No changes to commit"'
+
+                    // Push to the same branch
+                    bat "git push origin ${env.BRANCH_NAME}"
+                }
+            }
+        }
+    }
+}
