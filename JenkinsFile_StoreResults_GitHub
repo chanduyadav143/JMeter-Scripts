@@ -14,9 +14,10 @@ pipeline {
                 git branch: "${env.BRANCH_NAME}", credentialsId: "${params.gitCredentialsID}", url: "${env.TEST_REPO}"
             }
         }
-
+        
         stage('Run JMeter Tests') {
             steps {
+                // Use bat instead of sh and adjust volume mount for Windows PowerShell syntax
                 bat """
                 docker run --rm -v %cd%\\JMX_Files:/tests -w /tests ${IMAGE_NAME} ^
                 -n -t Sample.jmx -l results.jtl
@@ -32,19 +33,20 @@ pipeline {
 
         stage('Push Results') {
             steps {
-                script {
-                    // Configure git user for commit
-                    bat 'git config user.email "chandu143.cy@gmail.com"'
-                    bat 'git config user.name "chanduyadav143"'
-
-                    // Add the results to git
-                    bat 'git add JMX_Files/results.jtl'
-
-                    // Commit changes
-                    bat 'git commit -m "Add test results from Jenkins build ${env.BUILD_NUMBER}" || echo "No changes to commit"'
-
-                    // Push to the same branch
-                    bat "git push origin ${env.BRANCH_NAME}"
+                withCredentials([usernamePassword(credentialsId: "${params.gitCredentialsID}", 
+                                    usernameVariable: 'chanduyadav143', 
+                                    passwordVariable: '${params.gitCredentialsID}')]) {
+                    bat '''
+                        git config user.email "chandu143.cy@gmail.com"
+                        git config user.name "chanduyadav143"
+                        
+                        git add JMX_Files/results.jtl || echo "results.jtl not found"
+                       
+                        
+                        git commit -m "Add test results from Jenkins build ${BUILD_NUMBER}" || echo "No changes to commit"
+                        
+                        git push https://%GIT_USERNAME%:%GIT_PASSWORD%@github.com/chanduyadav143/JMeter-Scripts.git ${BRANCH_NAME}
+                    '''
                 }
             }
         }
