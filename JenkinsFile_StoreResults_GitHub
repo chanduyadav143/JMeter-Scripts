@@ -39,7 +39,6 @@ pipeline {
 
                     // Add the results to git
                     bat 'git add JMX_Files/results.jtl'
-                    bat 'git add report/*'
 
                     // Commit changes
                     bat 'git commit -m "Add test results from Jenkins build ${env.BUILD_NUMBER}" || echo "No changes to commit"'
