@@ -3,16 +3,20 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'chanduyadav143/jmetertest:v1.0'
-        TEST_REPO = 'https://github.com/chanduyadav143/JMeter-Scripts.git'
+        REPO_SSH  = 'git@github.com:chanduyadav143/JMeter-Scripts.git'
     }
 
     stages {
-
-        stage('Checkout Tests') {
+        stage('Checkout Tests (SSH)') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'Git-Creds',
-                    url: TEST_REPO
+                // Use SSH URL + credentialsId of SSH private key stored in Jenkins
+                checkout([$class: 'GitSCM',
+                          branches: [[name: 'main']],
+                          userRemoteConfigs: [[
+                             url: REPO_SSH,
+                             credentialsId: 'Git_SSH'
+                          ]]
+                ])
             }
         }
 
@@ -31,36 +35,25 @@ pipeline {
             }
         }
 
-        stage('Push Results to GitHub') {
+        stage('Push Results to GitHub (SSH)') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'Git-Creds',
-                        usernameVariable: 'GIT_USER',
-                        passwordVariable: 'GIT_PASS'
-                    )
-                ]) {
-
+                sshagent(['Git_SSH']) {
                     bat """
-                    git config --global user.email "Chandu143.cy@gmail.com"
-                    git config --global user.name "chanduyadav143"
+                    git config --global user.email "chandu143.cy@gmail.com"
+                    git config --global user.name  "chanduyadav143"
 
-                    git pull
+                    git pull origin main
 
                     copy /Y JMX_Files\\results.jtl results.jtl
                     xcopy /E /I /Y report report
 
-                    git add results.jtl
-
+                    git add .
                     git commit -m "Automated: Add latest JMeter results" || echo Nothing to commit
-
-                    git remote set-url origin https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git
 
                     git push origin main
                     """
                 }
             }
         }
-
     }
 }
