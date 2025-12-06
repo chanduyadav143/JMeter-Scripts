@@ -1,33 +1,71 @@
-stage('Push Results to GitHub') {
-    steps {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'Git-Creds',
-                usernameVariable: 'GIT_USER',
-                passwordVariable: 'GIT_PASS'
-            )
-        ]) {
-            bat """
-            git config --global user.email "Chandu143.cy@gmail.com"
-            git config --global user.name "chanduyadav143"
+pipeline {
+    agent any
 
-            git pull
+    environment {
+        IMAGE_NAME = 'chanduyadav143/jmetertest:v1.0'
+        TEST_REPO = 'https://github.com/chanduyadav143/JMeter-Scripts.git'
+    }
 
-            REM Create a timestamped folder for this run
-            set TIMESTAMP=%DATE:~-4%%DATE:~4,2%%DATE:~7,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%
-            mkdir results\\%TIMESTAMP%
+    stages {
 
-            REM Copy results and report into the folder
-            copy /Y JMX_Files\\results.jtl results\\%TIMESTAMP%\\
-            xcopy /E /I /Y report results\\%TIMESTAMP%\\report
-
-            git add results\\%TIMESTAMP%\\
-
-            git commit -m "Automated: Add JMeter results %TIMESTAMP%" || echo Nothing to commit
-
-            git remote set-url origin https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git
-            git push origin main
-            """
+        stage('Checkout Tests') {
+            steps {
+                git branch: 'main',
+                    credentialsId: 'ChanduJMeter',
+                    url: TEST_REPO
+            }
         }
+
+        stage('Run JMeter Tests') {
+            steps {
+                bat """
+                docker run --rm -v %cd%\\JMX_Files:/tests -w /tests ${IMAGE_NAME} ^
+                -n -t Sample.jmx -l results.jtl
+                """
+            }
+        }
+
+        stage('Archive Results') {
+            steps {
+                archiveArtifacts artifacts: 'JMX_Files/results.jtl, report/**', allowEmptyArchive: true
+            }
+        }
+
+        stage('Push Results to GitHub (Folder)') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'Git-Creds',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
+                    )
+                ]) {
+
+                    bat """
+                    git config --global user.email "Chandu143.cy@gmail.com"
+                    git config --global user.name "chanduyadav143"
+
+                    REM Pull latest changes
+                    git pull origin main
+
+                    REM Create a timestamped folder inside 'results'
+                    set TIMESTAMP=%DATE:~-4%%DATE:~4,2%%DATE:~7,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%
+                    mkdir results\\%TIMESTAMP%
+
+                    REM Copy JMeter results into this folder
+                    copy /Y JMX_Files\\results.jtl results\\%TIMESTAMP%\\
+                    xcopy /E /I /Y report results\\%TIMESTAMP%\\report
+
+                    git add results\\%TIMESTAMP%\\
+
+                    git commit -m "Automated: Add JMeter results %TIMESTAMP%" || echo Nothing to commit
+
+                    git remote set-url origin https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git
+                    git push origin main
+                    """
+                }
+            }
+        }
+
     }
 }
