@@ -10,9 +10,9 @@ pipeline {
 
         stage('Checkout Tests') {
             steps {
-                // Use HTTPS + PAT credentials
+                // Checkout using HTTPS + PAT
                 git branch: 'main',
-                    credentialsId: 'ChanduJMeter',  // Add your PAT here in Jenkins Credentials
+                    credentialsId: 'GitHub-PAT', // Jenkins credential with username + PAT
                     url: TEST_REPO
             }
         }
@@ -36,30 +36,29 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'ChanduJMeter', // Use same PAT credentials
+                        credentialsId: 'GitHub-PAT',
                         usernameVariable: 'GIT_USER',
                         passwordVariable: 'GIT_PASS'
                     )
                 ]) {
-
                     bat """
                     git config --global user.email "Chandu143.cy@gmail.com"
                     git config --global user.name "chanduyadav143"
 
+                    rem Pull latest changes first
+                    git pull https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git main
+
+                    rem Copy latest test results
                     copy /Y JMX_Files\\results.jtl results.jtl
                     xcopy /E /I /Y report report
 
-                    git add results.jtl report
-
+                    git add results.jtl
                     git commit -m "Automated: Add latest JMeter results" || echo Nothing to commit
 
-                    git remote set-url origin https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git
-
-                    git push origin main
+                    git push https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git main
                     """
                 }
             }
         }
-
     }
 }
