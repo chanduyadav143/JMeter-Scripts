@@ -10,8 +10,9 @@ pipeline {
 
         stage('Checkout Tests') {
             steps {
+                // Checkout using HTTPS + PAT
                 git branch: 'main',
-                    credentialsId: 'ChanduJMeter',
+                    credentialsId: 'GitHub-PAT', // Jenkins credential with username + PAT
                     url: TEST_REPO
             }
         }
@@ -31,41 +32,33 @@ pipeline {
             }
         }
 
-        stage('Push Results to GitHub (Folder)') {
+        stage('Push Results to GitHub') {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'Git-Creds',
+                        credentialsId: 'GitHub-PAT',
                         usernameVariable: 'GIT_USER',
                         passwordVariable: 'GIT_PASS'
                     )
                 ]) {
-
                     bat """
                     git config --global user.email "Chandu143.cy@gmail.com"
                     git config --global user.name "chanduyadav143"
 
-                    REM Pull latest changes
-                    git pull origin main
+                    rem Pull latest changes first
+                    git pull https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git main
 
-                    REM Create a timestamped folder inside 'results'
-                    set TIMESTAMP=%DATE:~-4%%DATE:~4,2%%DATE:~7,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%
-                    mkdir results\\%TIMESTAMP%
+                    rem Copy latest test results
+                    copy /Y JMX_Files\\results.jtl results.jtl
+                    xcopy /E /I /Y report report
 
-                    REM Copy JMeter results into this folder
-                    copy /Y JMX_Files\\results.jtl results\\%TIMESTAMP%\\
-                    xcopy /E /I /Y report results\\%TIMESTAMP%\\report
+                    git add results.jtl
+                    git commit -m "Automated: Add latest JMeter results" || echo Nothing to commit
 
-                    git add results\\%TIMESTAMP%\\
-
-                    git commit -m "Automated: Add JMeter results %TIMESTAMP%" || echo Nothing to commit
-
-                    git remote set-url origin https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git
-                    git push origin main
+                    git push https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git main
                     """
                 }
             }
         }
-
     }
 }
