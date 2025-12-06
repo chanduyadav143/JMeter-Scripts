@@ -10,9 +10,8 @@ pipeline {
 
         stage('Checkout Tests') {
             steps {
-                // Checkout using HTTPS + PAT
                 git branch: 'main',
-                    credentialsId: 'GitHub-PAT', // Jenkins credential with username + PAT
+                    credentialsId: 'GitHub-PAT',
                     url: TEST_REPO
             }
         }
@@ -48,12 +47,17 @@ pipeline {
                     rem Pull latest changes first
                     git pull https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git main
 
-                    rem Copy latest test results
-                    copy /Y JMX_Files\\results.jtl results.jtl
-                    xcopy /E /I /Y report report
+                    rem Create results folder if not exists
+                    if not exist results mkdir results
 
-                    git add results.jtl
-                    git commit -m "Automated: Add latest JMeter results" || echo Nothing to commit
+                    rem Append build number to results file and folder
+                    set BUILD_NUM=%BUILD_NUMBER%
+                    copy /Y JMX_Files\\results.jtl results\\results_%BUILD_NUM%.jtl
+                    xcopy /E /I /Y report results\\report_%BUILD_NUM%
+
+                    git add results\\
+
+                    git commit -m "Automated: Add latest JMeter results for build #%BUILD_NUM%" || echo Nothing to commit
 
                     git push https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git main
                     """
