@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout Tests') {
             steps {
                 git branch: 'main',
-                    credentialsId: 'ChanduJMeter',
+                    credentialsId: 'Git-Creds',
                     url: TEST_REPO
             }
         }
