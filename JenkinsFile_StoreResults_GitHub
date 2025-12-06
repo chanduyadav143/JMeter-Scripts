@@ -2,22 +2,22 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'chanduyadav143/jmetertest:v1.0'  // Your Docker image name
-        TEST_REPO = 'https://github.com/chanduyadav143/JMeter-Scripts.git'  // Your GitHub repo URL
-        BRANCH_NAME = 'main' // branch to push back to
+        IMAGE_NAME = 'chanduyadav143/jmetertest:v1.0'
+        TEST_REPO = 'https://github.com/chanduyadav143/JMeter-Scripts.git'
     }
 
     stages {
+
         stage('Checkout Tests') {
             steps {
-                // Clone your test scripts repository with credentials
-                git branch: "${env.BRANCH_NAME}", credentialsId: "${params.gitCredentialsID}", url: "${env.TEST_REPO}"
+                git branch: 'main',
+                    credentialsId: params.gitCredentialsID,
+                    url: TEST_REPO
             }
         }
-        
+
         stage('Run JMeter Tests') {
             steps {
-                // Use bat instead of sh and adjust volume mount for Windows PowerShell syntax
                 bat """
                 docker run --rm -v %cd%\\JMX_Files:/tests -w /tests ${IMAGE_NAME} ^
                 -n -t Sample.jmx -l results.jtl
@@ -31,24 +31,36 @@ pipeline {
             }
         }
 
-        stage('Push Results') {
+        stage('Push Results to GitHub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${params.gitCredentialsID}", 
-                                    usernameVariable: 'chanduyadav143', 
-                                    passwordVariable: '${params.gitCredentialsID}')]) {
-                    bat '''
-                        git config user.email "chandu143.cy@gmail.com"
-                        git config user.name "chanduyadav143"
-                        
-                        git add JMX_Files/results.jtl || echo "results.jtl not found"
-                       
-                        
-                        git commit -m "Add test results from Jenkins build ${BUILD_NUMBER}" || echo "No changes to commit"
-                        
-                        git push https://%GIT_USERNAME%:%GIT_PASSWORD%@github.com/chanduyadav143/JMeter-Scripts.git ${BRANCH_NAME}
-                    '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: params.gitCredentialsID,
+                        usernameVariable: 'chanduyadav143',
+                        passwordVariable: 'Chandu@8646'
+                    )
+                ]) {
+
+                    bat """
+                    git config --global user.email "Chandu143.cy@gmail.com"
+                    git config --global user.name "chanduyadav143"
+
+                    git pull
+
+                    copy /Y JMX_Files\\results.jtl results.jtl
+                    xcopy /E /I /Y report report
+
+                    git add results.jtl
+
+                    git commit -m "Automated: Add latest JMeter results" || echo Nothing to commit
+
+                    git remote set-url origin https://%GIT_USER%:%GIT_PASS%@github.com/chanduyadav143/JMeter-Scripts.git
+
+                    git push origin main
+                    """
                 }
             }
         }
+
     }
 }
