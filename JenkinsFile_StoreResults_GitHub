@@ -35,9 +35,9 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: 'ChanduJMeter',
-                        usernameVariable: 'chanduyadav143',
-                        passwordVariable: 'Chandu@8646'
+                        credentialsId: 'Git-Creds',
+                        usernameVariable: 'GIT_USER',
+                        passwordVariable: 'GIT_PASS'
                     )
                 ]) {
 
